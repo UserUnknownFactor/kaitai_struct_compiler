@@ -8,8 +8,8 @@ import sbt.Keys._
 resolvers += Resolver.sonatypeRepo("public")
 
 val NAME = "kaitai-struct-compiler"
-val VERSION = "0.9-SNAPSHOT"
-val TARGET_LANGS = "C++/STL, C#, Java, JavaScript, Lua, Perl, PHP, Python, Ruby"
+val VERSION = "0.10-SNAPSHOT"
+val TARGET_LANGS = "C++/STL, C#, Java, JavaScript, Lua, Nim, Perl, PHP, Python, Ruby"
 val UTF8 = Charset.forName("UTF-8")
 
 lazy val root = project.in(file(".")).
@@ -217,7 +217,7 @@ lazy val buildNpmJsFileTask = Def.task {
        |}));
      """.stripMargin
 
-  val targetFile = new File(s"js/npm/${name.value}.js")
+  val targetFile = new File(s"js/npm/${NAME}.js")
   println(s"buildNpmJsFile: writing $targetFile with AMD exports")
   IO.write(targetFile, fileWithExports, UTF8)
   Seq(targetFile)
@@ -235,7 +235,7 @@ lazy val buildNpmPackageTask = Def.task {
   val packageJsonTmpl = IO.read(new File("js/package.json"), UTF8)
   val packageJsonContents = packageJsonTmpl.replaceFirst(
     "\"version\": \".*?\"",
-    "\"version\": \"" + version.value + "\""
+    "\"version\": \"" + version.value.replace("-SNAPSHOT", ".0-SNAPSHOT") + "\""
   )
 
   IO.write(packageJsonFile, packageJsonContents, UTF8)
