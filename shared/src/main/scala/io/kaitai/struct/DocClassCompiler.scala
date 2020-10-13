@@ -37,7 +37,7 @@ abstract class DocClassCompiler(classSpecs: ClassSpecs, topClass: ClassSpec) ext
     classHeader(curClass)
 
     // Sequence
-    compileSeqRead(curClass)
+    compileSeq(curClass)
 
     // Instances
     curClass.instances.foreach { case (_, instSpec) =>
@@ -58,7 +58,7 @@ abstract class DocClassCompiler(classSpecs: ClassSpecs, topClass: ClassSpec) ext
     classFooter(curClass)
   }
 
-  def compileSeqRead(curClass: ClassSpec): Unit = {
+  def compileSeq(curClass: ClassSpec): Unit = {
     seqHeader(curClass)
 
     CalculateSeqSizes.forEachSeqAttr(curClass, (attr, seqPos, sizeElement, sizeContainer) => {

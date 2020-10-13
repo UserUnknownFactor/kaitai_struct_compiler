@@ -59,7 +59,7 @@ class GraphvizClassCompiler(classSpecs: ClassSpecs, topClass: ClassSpec) extends
     out.puts
 
     // Sequence
-    compileSeqRead(className, curClass)
+    compileSeq(className, curClass)
 
     curClass.instances.foreach { case (instName, instSpec) =>
       instSpec match {
@@ -84,7 +84,7 @@ class GraphvizClassCompiler(classSpecs: ClassSpecs, topClass: ClassSpec) extends
     out.puts("}")
   }
 
-  def compileSeqRead(className: List[String], curClass: ClassSpec): Unit = {
+  def compileSeq(className: List[String], curClass: ClassSpec): Unit = {
     tableStart(className, "seq")
 
     CalculateSeqSizes.forEachSeqAttr(curClass, (attr, seqPos, _, _) => {
@@ -241,7 +241,6 @@ class GraphvizClassCompiler(classSpecs: ClassSpecs, topClass: ClassSpec) extends
     dataType match {
       case _: BytesEosType => END_OF_STREAM
       case blt: BytesLimitType => expressionSize(blt.size, attrName)
-      case fbt: FixedBytesType => expressionSize(Ast.expr.IntNum(fbt.contents.length), attrName)
       case StrFromBytesType(basedOn, _) => dataTypeSizeAsString(basedOn, attrName)
       case utb: UserTypeFromBytes => dataTypeSizeAsString(utb.bytes, attrName)
       case EnumType(_, basedOn) => dataTypeSizeAsString(basedOn, attrName)
@@ -316,6 +315,11 @@ class GraphvizClassCompiler(classSpecs: ClassSpecs, topClass: ClassSpec) extends
           case _ =>
             affectedVars(value)
         }
+      case Ast.expr.Call(func, args) =>
+        val fromFunc = func match {
+          case Ast.expr.Attribute(obj: Ast.expr, methodName: Ast.identifier) => affectedVars(obj)
+        }
+        fromFunc ::: affectedVars(Ast.expr.List(args))
       case Ast.expr.Subscript(value, idx) =>
         affectedVars(value) ++ affectedVars(idx)
       case SwitchType.ELSE_CONST =>
@@ -427,7 +431,7 @@ object GraphvizClassCompiler extends LanguageCompilerStatic {
         s"str($bytesStr$comma$encoding)"
       case EnumType(name, basedOn) =>
         s"${dataTypeName(basedOn)}→${type2display(name)}"
-      case BitsType(width) => s"b$width"
+      case BitsType(width, bitEndian) => s"b$width"
       case _ => dataType.toString
     }
   }

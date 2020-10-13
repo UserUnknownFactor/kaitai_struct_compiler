@@ -2,6 +2,7 @@ package io.kaitai.struct.format
 
 import io.kaitai.struct.datatype.DataType
 import io.kaitai.struct.datatype.DataType._
+import io.kaitai.struct.exprlang.Ast
 
 import scala.collection.mutable
 
@@ -9,9 +10,15 @@ import scala.collection.mutable
   * Type that we use when we want to refer to a class specification or something
   * close, but not (yet) that well defined.
   */
-sealed trait ClassSpecLike
-case object UnknownClassSpec extends ClassSpecLike
-case object GenericStructClassSpec extends ClassSpecLike
+sealed trait ClassSpecLike {
+  def toDataType: DataType
+}
+case object UnknownClassSpec extends ClassSpecLike {
+  override def toDataType: DataType = CalcKaitaiStructType
+}
+case object GenericStructClassSpec extends ClassSpecLike {
+  override def toDataType: DataType = CalcKaitaiStructType
+}
 
 sealed trait Sized
 case object DynamicSized extends Sized
@@ -24,6 +31,7 @@ case class ClassSpec(
   isTopLevel: Boolean,
   meta: MetaSpec,
   doc: DocSpec,
+  toStringExpr: Option[Ast.expr],
   params: List[ParamDefSpec],
   seq: List[AttrSpec],
   types: Map[String, ClassSpec],
@@ -53,10 +61,13 @@ case class ClassSpec(
 
   var seqSize: Sized = NotCalculatedSized
 
-  def parentType: DataType = parentClass match {
-    case UnknownClassSpec | GenericStructClassSpec => CalcKaitaiStructType
-    case t: ClassSpec => CalcUserType(t.name, None)
+  def toDataType: DataType = {
+    val cut = CalcUserType(name, None)
+    cut.classSpec = Some(this)
+    cut
   }
+
+  def parentType: DataType = parentClass.toDataType
 
   /**
     * Recursively traverses tree of types starting from this type, calling
@@ -90,6 +101,7 @@ object ClassSpec {
     "meta",
     "doc",
     "doc-ref",
+    "to-string",
     "params",
     "seq",
     "types",
@@ -106,6 +118,8 @@ object ClassSpec {
     val meta = explicitMeta.fillInDefaults(metaDef)
 
     val doc = DocSpec.fromYaml(srcMap, path)
+
+    val toStringExpr = ParseUtils.getOptValueExpression(srcMap, "to-string", path)
 
     val params: List[ParamDefSpec] = srcMap.get("params") match {
       case Some(value) => paramDefFromYaml(value, path ++ List("params"))
@@ -132,7 +146,7 @@ object ClassSpec {
 
     val cs = ClassSpec(
       path, path.isEmpty,
-      meta, doc,
+      meta, doc, toStringExpr,
       params, seq, types, instances, enums
     )
 
@@ -245,6 +259,7 @@ object ClassSpec {
       true,
       meta = MetaSpec.OPAQUE,
       doc = DocSpec.EMPTY,
+      toStringExpr = None,
       params = List(),
       seq = List(),
       types = Map(),
