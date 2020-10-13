@@ -136,6 +136,7 @@ trait GenericChecks extends LanguageCompiler with EveryReadIsExpression with Eve
     )
 
   def attrAssertLastByte(name: Ast.expr, expectedLast: Int, msg: String): Unit = {
+    // TODO: IDK how to program in Scala :) We need to check if last N-bytes == expectedLast here.
     attrAssertEqual(
       Ast.expr.Attribute(
         name,

@@ -14,11 +14,11 @@ object MainJs {
   KSVersion.current = Version.version
 
   @JSExport
-  def compile(langStr: String, yaml: js.Object, importer: JavaScriptImporter, debug: Boolean = false): js.Promise[js.Dictionary[String]] = {
+  def compile(langStr: String, yaml: js.Object, importer: JavaScriptImporter, debug: Boolean = false, write: Boolean = false): js.Promise[js.Dictionary[String]] = {
     try {
       // TODO: add proper enabled by a flag
       //Log.initFromVerboseFlag(Seq("file", "value", "parent", "type_resolve", "type_valid", "seq_sizes", "import"))
-      val config = new RuntimeConfig(autoRead = !debug, readStoresPos = debug)
+      val config = new RuntimeConfig(autoRead = !debug, readStoresPos = debug, readWrite = write)
       val lang = LanguageCompilerStatic.byString(langStr)
 
       JavaScriptKSYParser.yamlToSpecs(yaml, importer, config).map { (specs) =>

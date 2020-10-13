@@ -17,15 +17,15 @@ trait EveryWriteIsExpression extends LanguageCompiler with ObjectOrientedLanguag
 
     attr.cond.repeat match {
       case RepeatEos =>
-        condRepeatCommonHeader(id, io, attr.dataType, needRaww(attr.dataType))
+        condRepeatCommonHeader(id, io, attr.dataType, needRaw(attr.dataType))
         attrWrite2(id, attr.dataType, io, attr.cond.repeat, false, defEndian)
         condRepeatCommonFooter
       case RepeatExpr(repeatExpr: Ast.expr) =>
-        condRepeatCommonHeader(id, io, attr.dataType, needRaww(attr.dataType))
+        condRepeatCommonHeader(id, io, attr.dataType, needRaw(attr.dataType))
         attrWrite2(id, attr.dataType, io, attr.cond.repeat, false, defEndian)
         condRepeatCommonFooter
       case RepeatUntil(untilExpr: Ast.expr) =>
-        condRepeatCommonHeader(id, io, attr.dataType, needRaww(attr.dataType))
+        condRepeatCommonHeader(id, io, attr.dataType, needRaw(attr.dataType))
         attrWrite2(id, attr.dataType, io, attr.cond.repeat, false, defEndian)
         condRepeatCommonFooter
       case NoRepeat =>
@@ -104,8 +104,6 @@ trait EveryWriteIsExpression extends LanguageCompiler with ObjectOrientedLanguag
         id
     }
     t match {
-      case FixedBytesType(contents, process) =>
-        attrPrimitiveWrite(io, translator.doByteArrayLiteral(contents), t, None)
       case t: BytesEosType =>
         val expr = writeExprAsString(idToWrite, rep, isRaw)
         attrPrimitiveWrite(io, expr, t, None)
@@ -192,10 +190,10 @@ trait EveryWriteIsExpression extends LanguageCompiler with ObjectOrientedLanguag
             byteType match {
               case blt: BytesLimitType =>
                 this match {
-                  //      case thisStore: AllocateAndStoreIO =>
-                  //        val ourIO = thisStore.allocateIO(rawId, rep)
-                  //        Utils.addUniqueAttr(extraAttrs, AttrSpec(List(), ourIO, KaitaiStreamType))
-                  //        privateMemberName(ourIO)
+//                  case thisStore: AllocateAndStoreIO =>
+//                    val ourIO = thisStore.allocateIO(rawId, rep)
+//                    Utils.addUniqueAttr(extraAttrs, AttrSpec(List(), ourIO, KaitaiStreamType))
+//                    privateMemberName(ourIO)
                   case thisLocal: AllocateIOLocalVar =>
                     val ioFixed = thisLocal.allocateIOFixed(rawId, translator.translate(blt.size))
                     attrUserTypeInstreamWrite(ioFixed, expr, t, exprType)
@@ -251,20 +249,10 @@ trait EveryWriteIsExpression extends LanguageCompiler with ObjectOrientedLanguag
   }
 
   def internalEnumIntType(basedOn: IntType): DataType
-
   def attrPrimitiveWrite(io: String, expr: String, dt: DataType, defEndian: Option[FixedEndian], exprTypeOpt: Option[DataType] = None): Unit
   def attrBytesLimitWrite(io: String, expr: String, size: String, term: Int, padRight: Int): Unit
   def attrUserTypeInstreamWrite(io: String, expr: String, t: DataType, exprType: DataType): Unit
   def attrWriteStreamToStream(srcIo: String, dstIo: String): Unit
   def exprStreamToByteArray(ioFixed: String): String
-
   def attrUnprocess(proc: ProcessExpr, varSrc: Identifier, varDest: Identifier): Unit
-
-  // FIXME: unify with EveryReadIsExpression
-  def needRaww(dataType: DataType): Boolean = {
-    dataType match {
-      case t: UserTypeFromBytes => true
-      case _ => false
-    }
-  }
 }

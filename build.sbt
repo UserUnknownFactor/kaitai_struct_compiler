@@ -1,6 +1,7 @@
 import java.io.File
 import java.nio.charset.Charset
 import java.nio.file.Files
+import java.time.Instant
 
 import com.typesafe.sbt.packager.linux.{LinuxPackageMapping, LinuxSymlink}
 import sbt.Keys._
@@ -174,8 +175,8 @@ lazy val generateVersionTask = Def.task {
                     |object Version {
                     |  val name = "${name.value}"
                     |  val version = "${version.value}"
-                    |  val gitCommit = "${sys.env.getOrElse("GIT_COMMIT", "GIT_COMMIT not defined")}"
-                    |  val gitTime = "${sys.env.getOrElse("GIT_DATE_ISO", "GIT_DATE_ISO not defined")}"
+                    |  val gitCommit = "${sys.env.getOrElse("GIT_COMMIT", "")}"
+                    |  val gitTime = "${sys.env.getOrElse("GIT_DATE_ISO", Instant.now().toString())}"
                     |}
                     |""".stripMargin
 

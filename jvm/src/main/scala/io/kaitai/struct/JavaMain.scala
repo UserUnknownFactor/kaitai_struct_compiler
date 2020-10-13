@@ -123,7 +123,11 @@ object JavaMain {
 
       opt[String]("nim-module") valueName("<module>") action { (x, c) =>
         c.copy(runtime = c.runtime.copy(nimModule = x))
-      } text("Path of Nim runtime module (Nim only, default: kaitai_struct/runtime/nim/kaitai)")
+      } text("Path of Nim runtime module (Nim only, default: kaitai_struct_nim_runtime)")
+
+      opt[String]("nim-opaque") valueName("<module>") action { (x, c) =>
+        c.copy(runtime = c.runtime.copy(nimOpaque = x))
+      } text("Directory of opaque Nim modules (Nim only, default: directory of generated module)")
 
       opt[Boolean]("opaque-types") action { (x, c) =>
         c.copy(runtime = c.runtime.copy(opaqueTypes = x))
@@ -298,8 +302,13 @@ class JavaMain(config: CLIConfig) {
   }
 
   def compileAllLangs(specs: ClassSpecs, config: CLIConfig): Map[String, Map[String, SpecEntry]] = {
-    config.targets.map { lang =>
-      lang -> compileOneLang(specs, lang, s"${config.outDir}/$lang")
+    config.targets.map { langStr =>
+      langStr match {
+        case "go" | "java" =>
+          langStr -> compileOneLang(specs, langStr, s"${config.outDir}/${langStr}/src")
+        case _ =>
+          langStr -> compileOneLang(specs, langStr, s"${config.outDir}/${langStr}")
+      }
     }.toMap
   }
 
@@ -357,19 +366,19 @@ class JavaMain(config: CLIConfig) {
       Console.err.println(ex.getMessage)
     ex match {
       case ype: YAMLParseException =>
-        CompileError("(main)", ype.path, ype.msg)
+        CompileError(srcFile, ype.path, None, None, ype.msg)
       case e: ErrorInInput =>
         val file = e.file.getOrElse(srcFile)
         val msg = Option(e.getCause) match {
           case Some(cause) => cause.getMessage
           case None => e.getMessage
         }
-        CompileError(file, e.path, msg)
+        CompileError(file, e.path, None, None, msg)
       case ypr: YAMLParserError =>
         val file = ypr.file.getOrElse(srcFile)
-        CompileError(file, List(), ex.getMessage)
+        CompileError(file, List(), ypr.line, ypr.col, ypr.msg)
       case _ =>
-        CompileError(srcFile, List(), ex.getMessage)
+        CompileError(srcFile, List(), None, None, ex.getMessage)
     }
   }
 }
