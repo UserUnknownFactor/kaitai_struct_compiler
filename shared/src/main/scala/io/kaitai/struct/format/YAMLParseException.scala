@@ -1,6 +1,5 @@
 package io.kaitai.struct.format
 
-import fastparse.StringReprOps
 import io.kaitai.struct.Utils
 import io.kaitai.struct.datatype.DataType
 import io.kaitai.struct.exprlang.Expressions
@@ -40,7 +39,7 @@ object YAMLParseException {
 
   def expression(epe: Expressions.ParseException, path: List[String]): YAMLParseException = {
     val f = epe.failure
-    val pos = StringReprOps.prettyIndex(f.extra.input, f.index)
+    val pos = f.extra.input.prettyIndex(f.index)
 
     // Try to diagnose most common errors and provide a friendly suggestion
     val lookup2 = Utils.safeLookup(epe.src, f.index, 2)
@@ -52,11 +51,8 @@ object YAMLParseException {
       None
     }).map((x) => s", did you mean '$x'?").getOrElse("")
 
-    f.extra.traced.expected
-
     new YAMLParseException(
-      s"parsing expression '${epe.src}' failed on $pos, " +
-        s"expected ${f.extra.traced.expected.replaceAll("\n", "\\n")}$suggestion",
+      s"${f.extra.traced.msg} $suggestion",
       path
     )
   }

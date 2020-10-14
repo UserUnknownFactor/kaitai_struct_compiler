@@ -5,6 +5,7 @@ import java.time.Instant
 
 import com.typesafe.sbt.packager.linux.{LinuxPackageMapping, LinuxSymlink}
 import sbt.Keys._
+import sbt.IO.copyFile
 
 resolvers += Resolver.sonatypeRepo("public")
 
@@ -20,13 +21,14 @@ lazy val root = project.in(file(".")).
     publishLocal := {}
   )
 
-lazy val compiler = crossProject.in(file(".")).
+lazy val compiler = crossProject(JSPlatform, JVMPlatform).in(file(".")).
   enablePlugins(JavaAppPackaging).
   settings(
+    scalaVersion := "2.12.12",
     organization := "io.kaitai",
     version := sys.env.getOrElse("KAITAI_STRUCT_VERSION", VERSION),
     licenses := Seq(("GPL-3.0", url("https://opensource.org/licenses/GPL-3.0"))),
-    scalaVersion := "2.12.4",
+    maintainer := "kaitai-struct-maintainer",
 
     // Repo publish options
     publishTo := version { (v: String) =>
@@ -57,8 +59,8 @@ lazy val compiler = crossProject.in(file(".")).
     sourceGenerators in Compile += generateVersionTask.taskValue, // update automatically on every rebuild
 
     libraryDependencies ++= Seq(
-      "com.github.scopt" %%% "scopt" % "3.6.0",
-      "com.lihaoyi" %%% "fastparse" % "1.0.0",
+      "com.github.scopt" %%% "scopt" % "3.7.1",
+      "com.lihaoyi" %%% "fastparse" % "2.3.0",
       "org.yaml" % "snakeyaml" % "1.25"
     )
   ).
@@ -67,7 +69,7 @@ lazy val compiler = crossProject.in(file(".")).
 
     mainClass in Compile := Some("io.kaitai.struct.JavaMain"),
     libraryDependencies ++= Seq(
-      "org.scalatest" %% "scalatest" % "3.0.1" % "test"
+      "org.scalatest" %% "scalatest" % "3.2.0" % "test"
     ),
 
     testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-u", "target/test_out"),
@@ -213,7 +215,7 @@ lazy val buildNpmJsFileTask = Def.task {
        |
        |$compiledFileContents
        |
-       |return exports.io.kaitai.struct.MainJs;
+       |return MainJs;
        |
        |}));
      """.stripMargin

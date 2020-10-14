@@ -1,9 +1,7 @@
 package io.kaitai.struct.exprlang
 
-import fastparse.noApi._
+import fastparse._
 import Lexical.kw
-import WsApi._
-import fastparse.StringReprOps
 
 /**
   * Loosely based on /pythonparse/shared/src/main/scala/pythonparse/
@@ -25,30 +23,31 @@ import fastparse.StringReprOps
   * IN THE SOFTWARE.
   */
 object Expressions {
+  implicit def whitespace(cfg: P[_]): P[Unit] = Lexical.wscomment(cfg)
 
-  val NAME: P[Ast.identifier] = Lexical.identifier
-  val TYPE_NAME: P[Ast.typeId] = P("::".!.? ~ NAME.rep(1, "::") ~ ("[" ~ "]").!.?).map {
+  def NAME[_: P]: P[Ast.identifier] = Lexical.identifier
+  def TYPE_NAME[_: P]: P[Ast.typeId] = P("::".!.? ~ NAME.rep(1, "::") ~ ("[" ~ "]").!.?).map {
     case (first, names: Seq[Ast.identifier], arrayStr) =>
       Ast.typeId(first.nonEmpty, names.map((el) => el.name), arrayStr.nonEmpty)
   }
-  val INT_NUMBER = Lexical.integer
-  val FLOAT_NUMBER = Lexical.floatnumber
-  val STRING: P[String] = Lexical.stringliteral
+  def INT_NUMBER[_: P] = Lexical.integer
+  def FLOAT_NUMBER[_: P] = Lexical.floatnumber
+  def STRING[_: P]: P[String] = Lexical.stringliteral
 
-  val test: P[Ast.expr] = P( or_test ~ ("?" ~ test ~ ":" ~ test).? ).map{
+  def test[_: P]: P[Ast.expr] = P( or_test ~ ("?" ~ test ~ ":" ~ test).? ).map{
       case (x, None) => x
       case (condition, Some((ifTrue, ifFalse))) => Ast.expr.IfExp(condition, ifTrue, ifFalse)
     }
-  val or_test = P( and_test.rep(1, kw("or")) ).map{
+  def or_test[_: P] = P( and_test.rep(1, kw("or")) ).map{
     case Seq(x) => x
     case xs => Ast.expr.BoolOp(Ast.boolop.Or, xs)
   }
-  val and_test = P( not_test.rep(1, kw("and")) ).map{
+  def and_test[_: P] = P( not_test.rep(1, kw("and")) ).map{
     case Seq(x) => x
     case xs => Ast.expr.BoolOp(Ast.boolop.And, xs)
   }
-  val not_test: P[Ast.expr] = P( (kw("not") ~ not_test).map(Ast.expr.UnaryOp(Ast.unaryop.Not, _)) | comparison )
-  val comparison: P[Ast.expr] = P( expr ~ (comp_op ~ expr).? ).map{
+  def not_test[_: P]: P[Ast.expr] = P( (kw("not") ~ not_test).map(Ast.expr.UnaryOp(Ast.unaryop.Not, _)) | comparison )
+  def comparison[_: P]: P[Ast.expr] = P( expr ~ (comp_op ~ expr).? ).map{
     case (lhs, None) => lhs
     case (lhs, Some(chunks)) =>
       val (op, rhs) = chunks
@@ -57,60 +56,60 @@ object Expressions {
 
   // Common operators, mapped from their
   // strings to their type-safe representations
-  def op[T](s: P0, rhs: T) = s.!.map(_ => rhs)
-  val LShift = op("<<", Ast.operator.LShift)
-  val RShift = op(">>", Ast.operator.RShift)
-  val Lt = op("<", Ast.cmpop.Lt)
-  val Gt = op(">", Ast.cmpop.Gt)
-  val Eq = op("==", Ast.cmpop.Eq)
-  val GtE = op(">=", Ast.cmpop.GtE)
-  val LtE = op("<=", Ast.cmpop.LtE)
-  val NotEq = op("!=", Ast.cmpop.NotEq)
-  val comp_op = P( LtE|GtE|Eq|Gt|Lt|NotEq )
-  val Add = op("+", Ast.operator.Add)
-  val Sub = op("-", Ast.operator.Sub)
-//  val Pow = op("**", Ast.operator.Pow)
-  val Mult= op("*", Ast.operator.Mult)
-  val Div = op("/", Ast.operator.Div)
-  val Mod = op("%", Ast.operator.Mod)
-  val BitOr = op("|", Ast.operator.BitOr)
-  val BitAnd = op("&", Ast.operator.BitAnd)
-  val BitXor = op("^", Ast.operator.BitXor)
+  def op[T, _: P](s: => P[Unit], rhs: T) = s.!.map(_ => rhs)
+  def LShift[_: P] = op("<<", Ast.operator.LShift)
+  def RShift[_: P] = op(">>", Ast.operator.RShift)
+  def Lt[_: P] = op("<", Ast.cmpop.Lt)
+  def Gt[_: P] = op(">", Ast.cmpop.Gt)
+  def Eq[_: P] = op("==", Ast.cmpop.Eq)
+  def GtE[_: P] = op(">=", Ast.cmpop.GtE)
+  def LtE[_: P] = op("<=", Ast.cmpop.LtE)
+  def NotEq[_: P] = op("!=", Ast.cmpop.NotEq)
+  def comp_op[_: P] = P( LtE|GtE|Eq|Gt|Lt|NotEq )
+  def Add[_: P] = op("+", Ast.operator.Add)
+  def Sub[_: P] = op("-", Ast.operator.Sub)
+//  def Pow[_: P] = op("**", Ast.operator.Pow)
+  def Mult[_: P] = op("*", Ast.operator.Mult)
+  def Div[_: P] = op("/", Ast.operator.Div)
+  def Mod[_: P] = op("%", Ast.operator.Mod)
+  def BitOr[_: P] = op("|", Ast.operator.BitOr)
+  def BitAnd[_: P] = op("&", Ast.operator.BitAnd)
+  def BitXor[_: P] = op("^", Ast.operator.BitXor)
 
-  def Chain(p: P[Ast.expr], op: P[Ast.operator]) = P( p ~ (op ~ p).rep ).map{
+  def Chain[_: P](p: => P[Ast.expr], op: => P[Ast.operator]) = P( p ~ (op ~ p).rep ).map{
     case (lhs, chunks) =>
       chunks.foldLeft(lhs){case (lhs, (op, rhs)) =>
         Ast.expr.BinOp(lhs, op, rhs)
       }
   }
-  val expr: P[Ast.expr] = P( Chain(xor_expr, BitOr) )
-  val xor_expr: P[Ast.expr] = P( Chain(and_expr, BitXor) )
-  val and_expr: P[Ast.expr] = P( Chain(shift_expr, BitAnd) )
-  val shift_expr: P[Ast.expr] = P( Chain(arith_expr, LShift | RShift) )
+  def expr[_: P]: P[Ast.expr] = P( Chain(xor_expr, BitOr) )
+  def xor_expr[_: P]: P[Ast.expr] = P( Chain(and_expr, BitXor) )
+  def and_expr[_: P]: P[Ast.expr] = P( Chain(shift_expr, BitAnd) )
+  def shift_expr[_: P]: P[Ast.expr] = P( Chain(arith_expr, LShift | RShift) )
 
-  val arith_expr: P[Ast.expr] = P( Chain(term, Add | Sub) )
-  val term: P[Ast.expr] = P( Chain(factor, Mult | Div | Mod) )
-  val factor: P[Ast.expr] = P(
+  def arith_expr[_: P]: P[Ast.expr] = P( Chain(term, Add | Sub) )
+  def term[_: P]: P[Ast.expr] = P( Chain(factor, Mult | Div | Mod) )
+  def factor[_: P]: P[Ast.expr] = P(
     ("+" ~ factor) |
     ("-" ~ factor).map(Ast.expr.UnaryOp(Ast.unaryop.Minus, _)) |
     ("~" ~ factor).map(Ast.expr.UnaryOp(Ast.unaryop.Invert, _)) |
     power
   )
-//  val power: P[Ast.expr] = P( atom ~ trailer.rep ~ (Pow ~ factor).? ).map{
+//  def power[_: P]: P[Ast.expr] = P( atom ~ trailer.rep ~ (Pow ~ factor).? ).map{
 //    case (lhs, trailers, rhs) =>
-//      val left = trailers.foldLeft(lhs)((l, t) => t(l))
+//      def left = trailers.foldLeft(lhs)((l, t) => t(l))
 //      rhs match{
 //        case None => left
 //        case Some((op, right)) => Ast.expr.BinOp(left, op, right)
 //      }
 //  }
-  val power: P[Ast.expr] = P( atom ~ trailer.rep ).map {
+  def power[_: P]: P[Ast.expr] = P( atom ~ trailer.rep ).map {
     case (lhs, trailers) =>
       trailers.foldLeft(lhs)((l, t) => t(l))
   }
-  val atom: P[Ast.expr] = {
-    val empty_list = ("[" ~ "]").map(_ => Ast.expr.List(Nil))
-//    val empty_dict = ("{" ~ "}").map(_ => Ast.expr.Dict(Nil, Nil))
+  def atom[_: P]: P[Ast.expr] = {
+    def empty_list = ("[" ~ "]").map(_ => Ast.expr.List(Nil))
+//    def empty_dict = ("{" ~ "}").map(_ => Ast.expr.Dict(Nil, Nil))
     P(
       empty_list |
 //      empty_dict |
@@ -130,24 +129,24 @@ object Expressions {
       INT_NUMBER.map(Ast.expr.IntNum)
     )
   }
-  val list_contents = P( test.rep(1, ",") ~ ",".? )
-  val list = P( list_contents ).map(Ast.expr.List(_))
+  def list_contents[_: P] = P( test.rep(1, ",") ~ ",".? )
+  def list[_: P] = P( list_contents ).map(Ast.expr.List(_))
 
-  val trailer: P[Ast.expr => Ast.expr] = {
-    val call = P("(" ~ arglist ~ ")").map{ case (args) => (lhs: Ast.expr) => Ast.expr.Call(lhs, args)}
-    val slice = P("[" ~ test ~ "]").map{ case (args) => (lhs: Ast.expr) => Ast.expr.Subscript(lhs, args)}
-    val cast = P( "." ~ "as" ~ "<" ~ TYPE_NAME ~ ">" ).map(
+  def trailer[_: P]: P[Ast.expr => Ast.expr] = {
+    def call = P("(" ~ arglist ~ ")").map{ case (args) => (lhs: Ast.expr) => Ast.expr.Call(lhs, args)}
+    def slice = P("[" ~ test ~ "]").map{ case (args) => (lhs: Ast.expr) => Ast.expr.Subscript(lhs, args)}
+    def cast = P( "." ~ "as" ~ "<" ~ TYPE_NAME ~ ">" ).map(
       typeName => (lhs: Ast.expr) => Ast.expr.CastToType(lhs, typeName)
     )
-    val attr = P("." ~ NAME).map(id => (lhs: Ast.expr) => Ast.expr.Attribute(lhs, id))
+    def attr = P("." ~ NAME).map(id => (lhs: Ast.expr) => Ast.expr.Attribute(lhs, id))
     P( call | slice | cast | attr )
   }
 
-  val exprlist: P[Seq[Ast.expr]] = P( expr.rep(1, sep = ",") ~ ",".? )
-  val testlist: P[Seq[Ast.expr]] = P( test.rep(1, sep = ",") ~ ",".? )
-//  val dictorsetmaker: P[Ast.expr] = {
-//    val dict_item = P( test ~ ":" ~ test )
-//    val dict: P[Ast.expr.Dict] = P(
+  def exprlist[_: P]: P[Seq[Ast.expr]] = P( expr.rep(1, sep = ",") ~ ",".? )
+  def testlist[_: P]: P[Seq[Ast.expr]] = P( test.rep(1, sep = ",") ~ ",".? )
+//  def dictorsetmaker[_: P]: P[Ast.expr] = {
+//    def dict_item = P( test ~ ":" ~ test )
+//    def dict: P[Ast.expr.Dict] = P(
 //      (dict_item.rep(1, ",") ~ ",".?).map{x =>
 //        val (keys, values) = x.unzip
 //        Ast.expr.Dict(keys, values)
@@ -156,19 +155,19 @@ object Expressions {
 //    P( /*dict_comp |*/ dict /*| set_comp | set*/)
 //  }
 
-  val arglist: P[Seq[Ast.expr]] = P( (test).rep(0, ",") )
+  def arglist[_: P]: P[Seq[Ast.expr]] = P( (test).rep(0, ",") )
 
-  val comp_if: P[Ast.expr] = P( "if" ~ test )
+  def comp_if[_: P]: P[Ast.expr] = P( "if" ~ test )
 
-  val testlist1: P[Seq[Ast.expr]] = P( test.rep(1, sep = ",") )
+  def testlist1[_: P]: P[Seq[Ast.expr]] = P( test.rep(1, sep = ",") )
 
-  val enumByName: P[Ast.expr.EnumByLabel] = P("::".!.? ~ NAME.rep(2, "::")).map {
+  def enumByName[_: P]: P[Ast.expr.EnumByLabel] = P("::".!.? ~ NAME.rep(2, "::")).map {
     case (first, names: Seq[Ast.identifier]) =>
-      val isAbsolute = first.nonEmpty
+      def isAbsolute[_: P] = first.nonEmpty
       val (enumName, enumLabel) = names.takeRight(2) match {
         case Seq(a, b) => (a, b)
       }
-      val typePath = names.dropRight(2)
+      def typePath[_: P] = names.dropRight(2)
       if (typePath.isEmpty) {
         Ast.expr.EnumByLabel(enumName, enumLabel, Ast.EmptyTypeId)
       } else {
@@ -176,23 +175,23 @@ object Expressions {
       }
   }
 
-  val byteSizeOfType: P[Ast.expr.ByteSizeOfType] =
+  def byteSizeOfType[_: P]: P[Ast.expr.ByteSizeOfType] =
     P("sizeof" ~ "<" ~ TYPE_NAME ~ ">").map(typeName => Ast.expr.ByteSizeOfType(typeName))
-  val bitSizeOfType: P[Ast.expr.BitSizeOfType] =
+  def bitSizeOfType[_: P]: P[Ast.expr.BitSizeOfType] =
     P("bitsizeof" ~ "<" ~ TYPE_NAME ~ ">").map(typeName => Ast.expr.BitSizeOfType(typeName))
 
-  val topExpr: P[Ast.expr] = P( test ~ End )
+  def topExpr[_: P]: P[Ast.expr] = P( test ~ End )
 
-  val topExprList: P[Seq[Ast.expr]] = P(testlist1 ~ End)
+  def topExprList[_: P]: P[Seq[Ast.expr]] = P(testlist1 ~ End)
 
   class ParseException(val src: String, val failure: Parsed.Failure)
     extends RuntimeException(failure.msg)
 
-  def parse(src: String): Ast.expr = realParse(src, topExpr)
-  def parseList(src: String): Seq[Ast.expr] = realParse(src, topExprList)
+  def parse(src: String): Ast.expr = realParse(src, topExpr(_))
+  def parseList(src: String): Seq[Ast.expr] = realParse(src, topExprList(_))
 
-  private def realParse[T](src: String, parser: P[T]): T = {
-    val r = parser.parse(src.trim)
+  private def realParse[T](src: String, parser: P[_] => P[T]): T = {
+    val r = fastparse.parse(src.trim, parser)
     r match {
       case Parsed.Success(value, _) => value
       case f: Parsed.Failure =>
